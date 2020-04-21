@@ -5,6 +5,10 @@ $ npm i
 
 lambdaコンソールにて関数の作成
 環境変数の設定
+
+ACCESSTOKEN = "xxxx"
+CHANNELSECRET="xx"
+
 APIgatewayの設定を行い、エンドポイントをLINEのコンソール上でWebhookURLに設定する
 
 詳しくは：

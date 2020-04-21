@@ -1,36 +1,47 @@
 "use strict";
+// モジュール呼び出し
+const crypto = require("crypto");
 const line = require("@line/bot-sdk");
-const client = new line.Client({ channelAccessToken: process.env.ACCESSTOKEN });
-exports.handler = (event, context) => {
 
-  let body = JSON.parse(event.body);
+// インスタンス生成
+const client = new line.Client({ channelAccessToken: process.env.ACCESSTOKEN });
+
+exports.handler = (event, context, callback) => {
+  // 署名検証
+  const signature = crypto
+    .createHmac("sha256", process.env.CHANNELSECRET)
+    .update(event.body)
+    .digest("base64");
+  const checkHeader = (event.headers || {})["X-Line-Signature"];
+  const body = JSON.parse(event.body);
   const events = body.events;
   console.log(events);
 
+  // 署名検証が成功した場合
+  if (signature === checkHeader) {
     events.forEach(async (event) => {
-      let mes;
+      let message;
+      // イベントタイプごとに関数を分ける
       switch (event.type) {
-        case "message": 
-          mes = await messageFunc(event);
+        // メッセージイベント
+        case "message":
+          message = await messageFunc(event);
           break;
-       /* case "postback": 
-          mes = await postbackFunc(event);
-          break;*/
-        case "follow": 
-          const pro = await client.getProfile(event.source.userId);
-          mes = {
-            type: "text",
-            text: `${pro.displayName}さん追加ありがとう！`,
-          };
+        // フォローイベント
+        case "follow":
+          message = { type: "text", text: "追加ありがとうございます！" };
+          break;
+        // ポストバックイベント
+        case "postback":
+          message = await postbackFunc(event);
           break;
       }
-
-      //メッセージを返信
-      if (mes != undefined) {
+      // メッセージを返信
+      if (message != undefined) {
         client
-          .replyMessage(body.events[0].replyToken, mes)
+          .replyMessage(body.events[0].replyToken, message)
           .then((response) => {
-            let lambdaResponse = {
+            const lambdaResponse = {
               statusCode: 200,
               headers: { "X-Line-Status": "OK" },
               body: '{"result":"completed"}',
@@ -38,37 +49,22 @@ exports.handler = (event, context) => {
             context.succeed(lambdaResponse);
           })
           .catch((err) => console.log(err));
-        return;
       }
     });
   }
-
-
-const messageFunc = async function (e) {
-  let mes;
-  switch (e.message.type) {
-    case "text": 
-      mes = await textFunc(e);
-      break;
-      /*case "postback":
-        mes = await postbackFunc(e)
-        breake;  */
-    default:
-      mes = { type: "text", text: "読み込めませんでした" };
+  // 署名検証に失敗した場合
+  else {
+    console.log("署名認証エラー");
   }
-  return mes;
 };
 
-async function textFunc(e) {
-  let userMes = e.message.text;
-  let returnMes;
-  returnMes = { type: "text", text: `受け取ったメッセージ：${userMes}` };
-  //特定のキーワードに応答
-  /*
-  if(userMes === "ほげほげ"){
-    returnMes = {type:"text",text:"お返事"}
-  }
-   */
-  return returnMes;
-}
-
+const messageFunc = async function (event) {
+  let message;
+  message = { type: "text", text: `メッセージイベントを受け付けました！` };
+  return message;
+};
+const postbackFunc = async function (event) {
+  let message;
+  message = { type: "text", text: "ポストバックイベントを受け付けました！" };
+  return message;
+};
