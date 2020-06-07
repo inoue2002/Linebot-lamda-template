@@ -6,8 +6,7 @@ const line = require("@line/bot-sdk");
 // インスタンス生成
 const client = new line.Client({ channelAccessToken: process.env.ACCESSTOKEN });
 
-exports.handler = (event, context, callback) => {
-  // 署名検証
+exports.handler = (event) => {
   const signature = crypto
     .createHmac("sha256", process.env.CHANNELSECRET)
     .update(event.body)
@@ -21,34 +20,23 @@ exports.handler = (event, context, callback) => {
   if (signature === checkHeader) {
     events.forEach(async (event) => {
       let message;
-      // イベントタイプごとに関数を分ける
       switch (event.type) {
-        // メッセージイベント
         case "message":
           message = await messageFunc(event);
           break;
-        // フォローイベント
-        case "follow":
-          message = { type: "text", text: "追加ありがとうございます！" };
-          break;
-        // ポストバックイベント
         case "postback":
           message = await postbackFunc(event);
+          break;
+        case "follow":
+          message = { type: "text", text: "追加ありがとうございます！" };
           break;
       }
       // メッセージを返信
       if (message != undefined) {
-        client
-          .replyMessage(body.events[0].replyToken, message)
-          .then((response) => {
-            const lambdaResponse = {
-              statusCode: 200,
-              headers: { "X-Line-Status": "OK" },
-              body: '{"result":"completed"}',
-            };
-            context.succeed(lambdaResponse);
-          })
-          .catch((err) => console.log(err));
+        await sendFunc(body.events[0].replyToken, message)
+         // .then(console.log)
+         // .catch(console.log);
+        return;
       }
     });
   }
@@ -58,13 +46,22 @@ exports.handler = (event, context, callback) => {
   }
 };
 
-const messageFunc = async function (event) {
-  let message;
-  message = { type: "text", text: `メッセージイベントを受け付けました！` };
+async function sendFunc(replyToken, mes) {
+  const result = new Promise(function (resolve, reject) {
+    client.replyMessage(replyToken, mes).then((response) => {
+      resolve("送信完了");
+    });
+  });
+  return result;
+}
+
+async function messageFunc(event) {
+  let message = "";
+  message = { type: "text", text: `メッセージイベント` };
   return message;
-};
+}
 const postbackFunc = async function (event) {
-  let message;
-  message = { type: "text", text: "ポストバックイベントを受け付けました！" };
+  let message = "";
+  message = { type: "text", text: "ポストバックイベント" };
   return message;
 };
