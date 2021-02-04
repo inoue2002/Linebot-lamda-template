@@ -7,11 +7,15 @@ const line = require("@line/bot-sdk");
 const client = new line.Client({ channelAccessToken: process.env.ACCESSTOKEN });
 
 exports.handler = (event) => {
-  const signature = crypto
+  let signature = crypto
     .createHmac("sha256", process.env.CHANNELSECRET)
     .update(event.body)
     .digest("base64");
-  const checkHeader = (event.headers || {})["X-Line-Signature"];
+  let checkHeader = (event.headers || {})["X-Line-Signature"];
+  if (!checkHeader) {
+    checkHeader = (event.headers || {})["x-line-signature"];
+  }
+
   const body = JSON.parse(event.body);
   const events = body.events;
   console.log(events);
@@ -33,9 +37,9 @@ exports.handler = (event) => {
       }
       // メッセージを返信
       if (message != undefined) {
-        await sendFunc(body.events[0].replyToken, message)
-         // .then(console.log)
-         // .catch(console.log);
+        await sendFunc(body.events[0].replyToken, message);
+        // .then(console.log)
+        // .catch(console.log);
         return;
       }
     });
